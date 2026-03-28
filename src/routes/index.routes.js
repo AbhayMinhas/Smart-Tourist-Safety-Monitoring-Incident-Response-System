@@ -9,8 +9,9 @@ const router = express.Router();
 router.use("/auth", authRouter);
 router.use("/user", userRouter);
 router.use("/emergency", emergencyRouter);
-router.get("/map",protect, (req, res) => {
-  res.render("map");
+router.get("/map",protect,(req, res) => {
+  const token = req.headers.authorization.split(" ")[1];
+  res.render("map",{token});
 });
 
 router.get("/health", (req, res) => {

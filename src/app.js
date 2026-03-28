@@ -31,7 +31,10 @@ app.use(express.json());
 
 io.use(async (socket, next) => {
   try {
-    const token = socket.handshake.auth?.token;
+    console.log(socket.handshake.auth?.token);
+    const token =
+      socket.handshake.auth?.token ||
+      socket.handshake.headers?.authorization?.split(" ")[1];
 
     if (!token) {
       return next(new Error("Unauthorized"));

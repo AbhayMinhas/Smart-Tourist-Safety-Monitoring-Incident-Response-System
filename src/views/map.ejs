@@ -48,7 +48,19 @@
 
         const marker = L.marker([0, 0]).addTo(map);
 
-        const socket = io();
+        const token = "<%=token%>";
+        const socket = io("http://localhost:7000", {
+            auth: {
+                token: token
+            }
+        });
+        socket.on("connect", () => {
+            console.log("Socket connected: ", socket.id);
+        });
+        socket.on("connect_error", (err) => {
+            console.error("Socket connection error:", err.message);
+        });
+     
 
         let lastPosition = null;
 
@@ -91,9 +103,9 @@
                             });
 
                         }
+
                     } else {
                         socket.emit("send-location", {
-                            userId: "user123",
                             latitude: lat,
                             longitude: lng,
                         });
