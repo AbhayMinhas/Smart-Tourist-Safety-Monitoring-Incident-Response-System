@@ -56,10 +56,19 @@ PORT=7000
 DB_CONNECTION_STRING=your_mongodb_uri
 JWT_SECRET=your_secret_key
 
+EMAIL_PROVIDER=gmail
 EMAIL_USER=your_email
 EMAIL_PASS=your_app_password
 ```
-
+you can also setup the provider to AMAZON SES just by setting up the .env in different manner as the code is provider agnostic
+for AWS SES:
+```
+EMAIL_PROVIDER=ses  
+SES_HOST=email-smtp.ap-south-1.amazonaws.com  
+SES_PORT=587  
+SES_USER=xxxx  
+SES_PASS=xxxx
+```
 ---
 
 ## Installation & Setup
@@ -79,7 +88,7 @@ http://localhost:7000
 
 ## Authentication
 
-All protected routes require JWT.
+All protected routes require JWT. which is set in request header.
 
 ### Header Format
 
@@ -434,6 +443,11 @@ API → read (nearby users via geo query)
 ```
 
 ---
+# Map Feature
+
+* the map gives all the users in 100m range to the user, here we use API polling for this purpose.
+* the name of all the users will appear on the users posiion icon
+* to distinguish between the user itself and other users the colour of the current user map marker will be blue and others will be yellow.
 
 # SAFETY PROFILE
 
