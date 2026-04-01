@@ -4,7 +4,6 @@ import { fetchNearbyUsers } from "./location.service.js";
 export const getNearbyUsers= async(req,res, next)=>{
     try{
         const {lat,lng}=req.query;
-
         if(!lat||!lng){
             throw{
                 statusCode:400,
@@ -16,7 +15,7 @@ export const getNearbyUsers= async(req,res, next)=>{
             lat: parseFloat(lat),
             lng: parseFloat(lng),
         });
-
+        
         res.status(200).json({
             success:true,
             data: users,

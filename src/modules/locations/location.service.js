@@ -59,7 +59,7 @@ export const fetchNearbyUsers = async ({ userId, lat, lng }) => {
           coordinates: [lng, lat],
         },
         distanceField: "distance",
-        maxDistance: 100, // 🔥 100 meters
+        maxDistance: 1000, //1000 meters
         spherical: true,
       },
     },

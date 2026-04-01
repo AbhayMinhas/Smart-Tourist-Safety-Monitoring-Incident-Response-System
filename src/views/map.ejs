@@ -33,6 +33,12 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+
+    <!-- clustering for incident and cdn for performance  -->
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+
     <script>
         function getDistance(lat1, lon1, lat2, lon2) {
             //haversine distance formula
@@ -104,7 +110,7 @@
                     //camera follows user
 
                     //set map view only first time
-                    map.setView([lat, lng], 15);
+                    map.setView([lat, lng], 16);
 
 
                     if (lastPosition) {
@@ -153,43 +159,129 @@
                 if (markers.has(user.userId)) {
                     markers.get(user.userId).setLatLng([lat, lng]);
                 } else {
-                    const marker = L.marker([lat, lng], {
+                    const usersmarker = L.marker([lat, lng], {
                         icon: L.icon({
                             iconUrl: "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png",
                             iconSize: [32, 32],
                         })
                     }).addTo(map);
 
-                    marker.bindTooltip(user.name,{
-                        permanent:true,
-                        direction:'top',
-                        className:"my-label"
+                    usermarker.bindTooltip(user.name, {
+                        permanent: true,
+                        direction: 'top',
+                        className: "my-label"
                     });
-                   markers.set(user.userId,marker); 
+                    markers.set(user.userId, usermarker);
                 }
             });
         }
 
-        setInterval(async()=>{
-            if(!lastPosition) return;
+        setInterval(async () => {
+            if (!lastPosition) return;
 
-            try{
+            try {
                 const res = await fetch(
-                    `/api/locations/nearby?lat=${lastPosition.lat}&lng=${lastPosition.lng}`,{
-                        header:{
-                            authoriztion: `Bearer ${token}`,
-                        },
-                    }
+                    `/api/locations/nearby?lat=${lastPosition.lat}&lng=${lastPosition.lng}`, {
+                    header: {
+                        authoriztion: `Bearer ${token}`,
+                    },
+                }
                 );
                 // console.log(res);
                 const data = await res.json();
-                if(data.success){
+                if (data.success) {
                     updateNearbyMarkers(data.data);
                 }
-            }catch(error){
-                console.error("Nearby fetch error:",err);
+            } catch (error) {
+                console.error("Nearby fetch error:", err);
             }
-        },5000);
+        }, 5000);
+        function generateSignature(incidents) {
+            return incidents
+                .map(i => `${i.type}-${i.coordinates[0]}-${i.coordinates[1]}`)
+                .sort()
+                .join("|");
+        }
+        let previousSignature = "";
+
+        const incidentMarkers = [];
+
+        async function fetchIncidents() {
+            if (!lastPosition) return;
+            try {
+                const res = await fetch(`/api/incidents/nearby?lat=${lastPosition.lat}&lng=${lastPosition.lng}`, {
+                    headers: {
+                        authoriztion: `Bearer ${token}`,
+                    },
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const newSignature = generateSignature(data.data);
+                    if(newSignature!==previousSignature){
+                        previousSignature=newSignature;
+                        renderIncidents(data.data);
+                    }
+                    // else{
+                    //     console.log("no change no render in incidents")
+                    // }
+                    //else no change skip render;
+                }
+            } catch (err) {
+                console.log(err);
+            }
+        }
+        const clusterGroup = L.markerClusterGroup({
+            disableClusteringAtZoom: 16,
+            maxClusterRadius: 30,
+            spiderfyonMaxZoom: true,
+            // zoomToBoundsOnClick: true,
+            // showCoverageOnHover:false,
+            iconCreateFunction: function (cluster) {
+                return L.divIcon({
+                    html: `<div style="background:red;color:white;border-radius:50%;padding:10px;">
+                            ${cluster.getChildCount()}
+                           </div>`,
+                    className: "custom-cluster",
+                    iconSize: L.point(40, 40)
+                });
+            }
+        });
+
+        map.addLayer(clusterGroup);
+
+        function renderIncidents(incidents) {
+            //clear old markers
+            console.log(incidents);
+            clusterGroup.clearLayers();
+            // const zoom=map.getZoom();
+
+            incidentMarkers.length = 0;
+            incidents.forEach((i, index) => {
+                let [lng, lat] = i.coordinates;
+
+                const offset = (index % 5) * 0.00009;
+                lat += offset;
+                lng += offset;
+
+                const incidentmarker = L.marker([lat, lng], {
+                    icon: L.icon({
+                        iconUrl: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+                        iconSize: [32, 32],
+                    }),
+                });
+                incidentmarker.bindPopup(`<b>${i.type}</b><br/> ${i.description || ""}`);
+                incidentMarkers.push(incidentmarker);
+                clusterGroup.addLayer(incidentmarker);
+            });
+        }
+
+        fetchIncidents();
+        setInterval(fetchIncidents, 10000);
+
+
+
+
 
     </script>
 
