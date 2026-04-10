@@ -61,7 +61,6 @@ io.use(async (socket, next) => {
 
 import { userLocations } from "./utils/locationCache.js";
 io.on("connection", (socket) => {
-  const userId = socket.user._id.toString();
   const userName = socket.user.firstName;
 
   console.log("User connected:", socket.id, "User: ", userName);

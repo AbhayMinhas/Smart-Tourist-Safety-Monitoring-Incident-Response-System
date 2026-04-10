@@ -18,6 +18,7 @@ router.get("/map", protect, (req, res) => {
   res.render("map", {
     token,
     user: req.user.firstName + " " + req.user.lastName,
+    userId:req.user._id.toString(),
   });
 });
 

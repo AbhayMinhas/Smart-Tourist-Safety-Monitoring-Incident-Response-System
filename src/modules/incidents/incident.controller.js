@@ -1,4 +1,4 @@
-import { createIncident, getNearbyIncidents } from "./incident.service.js";
+import { createIncident, deleteIncident, getNearbyIncidents, updateIncident } from "./incident.service.js";
 
 export const createIncidentHandler = async (req, res, next) => {
   try {
@@ -32,3 +32,32 @@ export const getNearbyIncidentsHandler = async (req,res,next)=>{
         next(err);
     }
 }
+
+export const updateIncidentHandler = async (req,res,next)=>{
+  try{
+    const incident = await updateIncident({
+      incidentId: req.params.id,
+      userId:req.user._id,
+      data:req.body,
+    });
+
+    res.json({
+      success:true,
+      data:incident
+    });
+  }catch(err){
+    next(err);
+  }
+};
+
+export const deleteIncidentHandler = async (req,res,next)=>{
+    try{
+        await deleteIncident({
+          incidentId:req.params.id,
+          userId:req.user._id,
+        });
+        res.json({success:true,message:"Incident deleted"});
+    }catch(err){
+      next(err);
+    }
+};

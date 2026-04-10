@@ -257,9 +257,9 @@
 
 
     <script type="module">
-        
-        
-        
+
+
+
         function animateMarker(marker) {
             setTimeout(() => {
                 const el = marker.getElement();
@@ -303,7 +303,7 @@
         }
 
         import { initMapActions } from "/js/map-actions.js";
-        import { openIncidentForm } from "/js/incident-form.js";
+        import { openIncidentForm, showToast } from "/js/incident-form.js";
         import { renderHeatmap, toggleHeatmap } from "/js/heatmap.js";
         const map = L.map("map").setView([0, 0], 15);
 
@@ -315,6 +315,8 @@
         animateMarker(marker);
         const token = "<%=token%>";
         const userName = "<%=user%>";
+        const currentUserId = "<%=userId%>";
+
 
         marker.bindTooltip(`${userName} (you)`, {
             permanent: true,
@@ -336,7 +338,7 @@
 
 
         let lastPosition = null;
-
+        let initialfetch = false;
 
 
 
@@ -384,6 +386,11 @@
                         });
                     }
                     lastPosition = { lat, lng };
+
+                    if(!initialfetch){
+                        initialfetch=true;
+                        fetchIncidents();
+                    }
                 },
                 (error) => {
                     console.error(error);
@@ -419,7 +426,7 @@
                         direction: 'top',
                         className: "my-label"
                     });
-                    markers.set(user.userId, usermarker);
+                    markers.set(user.userId, usersmarker);
                 }
             });
         }
@@ -517,11 +524,31 @@
                 const offset = (index % 5) * 0.00009;
                 lat += offset;
                 lng += offset;
+                const isOwner = i.user?.toString() === currentUserId;
+
+                const popupContent = `
+                <b>${i.type}</b><br/> ${i.description || "no description given..."}
+                ${isOwner ? `
+                <br/><br/>
+                <div style="display:flex; gap:6px; margin-top:6px;">
+                    <button 
+                        onclick="window.openEditForm('${i._id}', '${i.type}', \`${i.description || ""}\`)"
+                        style="padding:5px 10px; cursor:pointer; border:1px solid #ccc; border-radius:4px; background:#f8f9fa;">
+                        ✏️ Edit
+                    </button>
+                    <button 
+                        onclick="window.deleteIncident('${i._id}')"
+                        style="padding:5px 10px; cursor:pointer; background:#dc3545; color:white; border:none; border-radius:4px;">
+                        🗑️ Delete
+                    </button>
+                </div>    
+                `: ""}
+                `
 
                 const incidentmarker = L.marker([lat, lng], {
                     icon: getIncidentIcon(i.type),
                 });
-                incidentmarker.bindPopup(`<b>${i.type}</b><br/> ${i.description || "no description given..."}`);
+                incidentmarker.bindPopup(popupContent);
                 incidentMarkers.push(incidentmarker);
                 clusterGroup.addLayer(incidentmarker);
                 animateMarker(incidentmarker);
@@ -532,7 +559,7 @@
         setInterval(fetchIncidents, 10000);
 
 
-        initMapActions(map, token,clusterGroup,getIncidentIcon,animateMarker);
+        initMapActions(map, token, clusterGroup, getIncidentIcon, animateMarker);
 
 
         document.getElementById("toggle-layer-btn").onclick = () => {
@@ -543,24 +570,125 @@
             document.getElementById("toggle-layer-btn").innerText =
                 layerState.isHeatmapVisible ? "Show Markers" : "Show Heatmap";
 
-            // showToast(
-            //     layerState.isHeatmapVisible
-            //         ? "Heatmap enabled"
-            //         : "Markers enabled"
-            // );
+            showToast(
+                layerState.isHeatmapVisible
+                    ? "Heatmap enabled"
+                    : "Markers enabled"
+            );
         };
+
+        window.openEditForm = (id, type, description) => {
+            const formHtml = `
+        <div class="incident-form">
+            <h4 class="form-title">Edit Incident</h4>
+            <div class="form-group">
+                <label>Type</label>
+                <select id="edit-type">
+                    <option value="theft"      ${type === "theft" ? "selected" : ""}>Theft</option>
+                    <option value="accident"   ${type === "accident" ? "selected" : ""}>Accident</option>
+                    <option value="harassment" ${type === "harassment" ? "selected" : ""}>Harassment</option>
+                    <option value="other"      ${type === "other" ? "selected" : ""}>Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="edit-desc" placeholder="Describe what happened...">${description}</textarea>
+            </div>
+            <div style="display:flex; gap:6px;">
+                <button id="save-edit-btn" class="submit-btn">
+                    <span class="btn-text">Save</span>
+                    <span class="btn-loader hidden"></span>
+                </button>
+                <button id="cancel-edit-btn" class="submit-btn" style="background:#6c757d;">
+                    Cancel
+                </button>
+            </div>
+        </div>`;
+
+            L.popup({ minWidth: 300 })
+                .setLatLng(map.getCenter())
+                .setContent(formHtml)
+                .openOn(map);
+
+            setTimeout(() => {
+                document.getElementById("cancel-edit-btn").onclick = () => {
+                    map.closePopup();
+                };
+
+                const saveBtn = document.getElementById("save-edit-btn");
+                saveBtn.onclick = async () => {
+                    const updatedType = document.getElementById("edit-type").value;
+                    const updatedDesc = document.getElementById("edit-desc").value;
+
+                    saveBtn.disabled = true;
+                    saveBtn.querySelector(".btn-text").style.display = "none";
+                    saveBtn.querySelector(".btn-loader").classList.remove("hidden");
+
+                    try {
+                        const res = await fetch(`/api/incidents/${id}`, {
+                            method: "PATCH",
+                            headers: {
+                                "Content-Type": "application/json",
+                                authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                                type: updatedType,
+                                description: updatedDesc,
+                            }),
+                        });
+                        const data = await res.json();
+
+                        if (data.success) {
+                            map.closePopup();
+                            previousSignature = "";
+                            fetchIncidents();
+                            showToast("Incident updated successfully", "success"); // ✅
+                        } else {
+                            throw new Error(data.message);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showToast(err.message || "Failed to update incident", "error"); // ✅
+                    } finally {
+                        saveBtn.disabled = false;
+                        saveBtn.querySelector(".btn-text").style.display = "inline";
+                        saveBtn.querySelector(".btn-loader").classList.add("hidden");
+                    }
+                };
+            }, 0);
+        };
+
+        window.deleteIncident = async (id) => {
+            if (!confirm("Are you sure you want to delete this incident?")) return;
+
+            try {
+                const res = await fetch(`/api/incidents/${id}`, {
+                    method: "DELETE",
+                    headers: {
+                        authorization: `Bearer ${token}`,
+                    },
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    map.closePopup();
+                    fetchIncidents();
+                    showToast("Incident deleted successfully", "success"); 
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || "Failed to delete incident", "error"); // ✅
+            }
+        };
+
 
 
     </script>
 
     <div id="toast-container"></div>
 
-
-    <script type="module">
-
-
-        
-    </script>
 
 </body>
 
