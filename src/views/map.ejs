@@ -421,7 +421,7 @@
                         })
                     }).addTo(map);
                     animateMarker(usersmarker);
-                    usermarker.bindTooltip(user.name, {
+                    usersmarker.bindTooltip(user.name, {
                         permanent: true,
                         direction: 'top',
                         className: "my-label"
@@ -672,6 +672,7 @@
 
                 if (data.success) {
                     map.closePopup();
+                    previousSignature="";
                     fetchIncidents();
                     showToast("Incident deleted successfully", "success"); 
                 } else {
