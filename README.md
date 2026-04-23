@@ -45,7 +45,7 @@ src/
 ```
 
 ---
-#Node version used:22.18.0 (change with nvm)
+
 ## Environment Variables
 
 Create a `.env` file:
