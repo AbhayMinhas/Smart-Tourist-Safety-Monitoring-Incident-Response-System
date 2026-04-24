@@ -1,6 +1,7 @@
 import Emergency from "./emergency.model.js";
 import { sendEmail } from "../../utils/email.service.js";
 import { userLocations } from "../../utils/locationCache.js";
+import Location from "../locations/location.model.js";
 
 export const getUserEmergencies = async (userId) => {
   return await Emergency.find({ user: userId }).sort({ createdAt: -1 });
