@@ -1,4 +1,4 @@
-# Smart Tourist Safety Monitoring & Incident Response System (Backend)
+# Smart Tourist Safety Monitoring & Incident Response System 
 
 ## Overview
 
